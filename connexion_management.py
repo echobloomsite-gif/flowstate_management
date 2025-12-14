@@ -1,41 +1,53 @@
-from flask import Flask,jsonify,request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pyairtable import Table
 import hashlib
 import os
 import datetime
+
 app = Flask(__name__)
 CORS(app)
 
-#DATABASE PARAMETER
+# DATABASE
 Api_key = os.getenv("AIRTABLE_API_KEY")
 Base_Id = os.getenv("AIRTABLE_BASE_ID")
 Table_data = os.getenv("AIRTABLE_TABLE_NAME")
 
-init_Table = Table(Api_key,Base_Id,Table_data)
-read_table = init_Table.all()
+init_Table = Table(Api_key, Base_Id, Table_data)
+
 @app.route("/login", methods=['POST'])
 def login():
     data = request.get_json()
 
-    mail = data.get('email')
-    password = hashlib.sha256(data.get('password').encode()).hexdigest()
+    if not data:
+        return jsonify({'status': False, 'message': 'Invalid JSON'}), 400
 
-    if not mail or not password:
+    mail = data.get('email')
+    raw_password = data.get('password')
+
+    if not mail or not raw_password:
         return jsonify({
             'status': False,
             'message': 'Email ou mot de passe manquant'
         }), 400
 
-    for record in read_table:
+    hashed_password = hashlib.sha256(raw_password.encode()).hexdigest()
+
+    # Recharge la table à chaque requête
+    records = init_Table.all()
+
+    for record in records:
         fields = record.get('fields', {})
 
-        # Vérifier si l'email correspond
         if fields.get('mail') == mail:
+            if fields.get('password') == hashed_password:
 
-            # Vérifier le mot de passe
-            if fields.get('password') == password:
-                init_Table.create({"last_log_date":str(datetime.datetime.now())})
+                # ✅ Update du user connecté
+                init_Table.update(
+                    record['id'],
+                    {"last_log_date": str(datetime.datetime.now())}
+                )
+
                 return jsonify({
                     'status': True,
                     'message': 'Connexion réussie'
@@ -46,11 +58,7 @@ def login():
                     'message': 'Mot de passe incorrect'
                 }), 401
 
-    # Aucun email trouvé
     return jsonify({
         'status': False,
         'message': 'Utilisateur introuvable'
     }), 404
-
-if __name__ == '__main__':
-    app.run(host="127.0.0.1",port=5555,debug=True)
