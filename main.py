@@ -10,7 +10,7 @@ import smtplib
 import datetime
 app = Flask(__name__)
 CORS(app)
-
+created = False
 #DATABASE PARAMETER
 Api_key = os.getenv("AIRTABLE_API_KEY")
 Base_Id = os.getenv("AIRTABLE_BASE_ID")
@@ -35,61 +35,61 @@ def send_mail(From,to,content,Subject):
     except Exception as e:
         print("Une Erreur s'est produite lors du process de notification \nDetails:",e)
 @app.route("/get_auth",methods=['POST'])
+@app.route("/get_auth", methods=['POST'])
 def get_date():
     get_data = request.get_json()
-    #Get Primordial DATA
-    mail = get_data['email']
+
     constitute_dict = {
-        "USER_UUID":str(uuid.uuid4()),
-        "mail":get_data['email'],
-        "password":hashlib.sha256(get_data['password'].encode()).hexdigest(),
-        "Username":get_data['full_name'],
-        "Initial Role":get_data['initial_titre'],
-        "initial_revenue":get_data['initial_revenue'],
-        "initial_team_size":get_data['initial_team_size'],
-        "initial_client_count":get_data['initial_client_count'],
-        "created_date":str(datetime.datetime.now()),
+        "USER_UUID": str(uuid.uuid4()),
+        "mail": get_data['email'],
+        "password": hashlib.sha256(get_data['password'].encode()).hexdigest(),
+        "Username": get_data['full_name'],
+        "Initial Role": get_data['initial_titre'],
+        "initial_revenue": get_data['initial_revenue'],
+        "initial_team_size": get_data['initial_team_size'],
+        "initial_client_count": get_data['initial_client_count'],
+        "created_date": str(datetime.datetime.now()),
         "last_log_date": str(datetime.datetime.now())
     }
-    print(constitute_dict)
-    #SAVING PART LOGICAL
-    # Vérifier si l'email existe déjà
+
+    # Vérifier si email existe
     for data in read_table:
-        fields = data.get('fields', {})
-        if fields.get('mail') == constitute_dict["mail"]:
-            print("Email déjà utilisé")
+        if data.get('fields', {}).get('mail') == constitute_dict["mail"]:
             return jsonify({'status': False, 'message': 'Email déjà utilisé'})
 
-    # Si aucun email trouvé → créer
+    # Création utilisateur
     try:
         init_Table.create(constitute_dict)
-        print("SUCCESS")
-        message = f"""
-        Bonjour,
-
-        Un nouvel utilisateur vient de s’inscrire sur la plateforme Flowstate.
-
-        Informations de l’utilisateur :
-        - Nom complet : {get_data['full_name']}
-        - Adresse email : {get_data['email']}
-        - Rôle initial : {get_data['initial_titre']}
-        - Revenu initial : {get_data['initial_revenue']}
-        - Taille de l’équipe : {get_data['initial_team_size']}
-        - Nombre de clients : {get_data['initial_client_count']}
-
-        Date d’inscription : {datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')}
-
-        Ceci est une notification automatique.
-        Merci de ne pas répondre à ce message.
-
-        —  
-        Flowstate Platform
-        """
-
-        for collaborator in collaborator_email_list:
-            send_mail("flowstate.os.sup@gmail.com", collaborator, message, "[Flowstate] Nouvelle inscription utilisateur")
-
-        return jsonify({'status': True})
+        print("USER CREATED")
     except Exception as e:
-        print("Error:", e)
+        print("DB ERROR:", e)
         return jsonify({'status': False, 'error': str(e)})
+
+    # 🔔 Notification NON BLOQUANTE
+    message = f"""
+Bonjour,
+
+Un nouvel utilisateur vient de s’inscrire sur la plateforme Flowstate.
+
+Nom complet : {get_data['full_name']}
+Email : {get_data['email']}
+Rôle initial : {get_data['initial_titre']}
+
+Date : {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
+
+— Flowstate Platform
+"""
+
+    for collaborator in collaborator_email_list:
+        try:
+            send_mail(
+                "flowstate.os.sup@gmail.com",
+                collaborator,
+                message,
+                "[Flowstate] Nouvelle inscription utilisateur"
+            )
+        except Exception as e:
+            print("MAIL ERROR (ignored):", e)
+
+    # ✅ réponse toujours envoyée
+    return jsonify({'status': True})
