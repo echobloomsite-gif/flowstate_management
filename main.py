@@ -5,6 +5,7 @@ from flask_cors import CORS
 from pyairtable import Table
 import uuid
 import hashlib
+from notification_mail import send_mail
 import datetime
 app = Flask(__name__)
 CORS(app)
@@ -13,7 +14,7 @@ CORS(app)
 Api_key = os.getenv("AIRTABLE_API_KEY")
 Base_Id = os.getenv("AIRTABLE_BASE_ID")
 Table_data = os.getenv("AIRTABLE_TABLE_NAME")
-
+collaborator_email_list = ["echobloomsite@gmail.com","matheoestrela@gmail.com","lawrenceguerrier@gmail.com","jerome.damien.dj@gmail.com"]
 init_Table = Table(Api_key,Base_Id,Table_data)
 read_table = init_Table.all()
 @app.route("/get_auth",methods=['POST'])
@@ -46,6 +47,31 @@ def get_date():
     try:
         init_Table.create(constitute_dict)
         print("SUCCESS")
+        message = f"""
+        Bonjour,
+
+        Un nouvel utilisateur vient de s’inscrire sur la plateforme Flowstate.
+
+        Informations de l’utilisateur :
+        - Nom complet : {get_data['full_name']}
+        - Adresse email : {get_data['email']}
+        - Rôle initial : {get_data['initial_titre']}
+        - Revenu initial : {get_data['initial_revenue']}
+        - Taille de l’équipe : {get_data['initial_team_size']}
+        - Nombre de clients : {get_data['initial_client_count']}
+
+        Date d’inscription : {datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')}
+
+        Ceci est une notification automatique.
+        Merci de ne pas répondre à ce message.
+
+        —  
+        Flowstate Platform
+        """
+
+        for collaborator in collaborator_email_list:
+            send_mail("flowstate.os.sup@gmail.com", collaborator, message, "[Flowstate] Nouvelle inscription utilisateur")
+
         return jsonify({'status': True})
     except Exception as e:
         print("Error:", e)
