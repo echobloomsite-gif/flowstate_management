@@ -34,62 +34,63 @@ def send_mail(From,to,content,Subject):
             print("Email_Envoyé avec succès ")
     except Exception as e:
         print("Une Erreur s'est produite lors du process de notification \nDetails:",e)
-@app.route("/get_auth",methods=['POST'])
-@app.route("/get_auth", methods=['POST'])
+@app.route("/get_auth", methods=["POST"])
 def get_date():
-    get_data = request.get_json()
-
-    constitute_dict = {
-        "USER_UUID": str(uuid.uuid4()),
-        "mail": get_data['email'],
-        "password": hashlib.sha256(get_data['password'].encode()).hexdigest(),
-        "Username": get_data['full_name'],
-        "Initial Role": get_data['initial_titre'],
-        "initial_revenue": get_data['initial_revenue'],
-        "initial_team_size": get_data['initial_team_size'],
-        "initial_client_count": get_data['initial_client_count'],
-        "created_date": str(datetime.datetime.now()),
-        "last_log_date": str(datetime.datetime.now())
-    }
-
-    # Vérifier si email existe
-    for data in read_table:
-        if data.get('fields', {}).get('mail') == constitute_dict["mail"]:
-            return jsonify({'status': False, 'message': 'Email déjà utilisé'})
-
-    # Création utilisateur
     try:
+        get_data = request.get_json(force=True)
+
+        constitute_dict = {
+            "USER_UUID": str(uuid.uuid4()),
+            "mail": get_data["email"],
+            "password": hashlib.sha256(get_data["password"].encode()).hexdigest(),
+            "Username": get_data["full_name"],
+            "Initial Role": get_data["initial_titre"],
+            "initial_revenue": get_data["initial_revenue"],
+            "initial_team_size": get_data["initial_team_size"],
+            "initial_client_count": get_data["initial_client_count"],
+            "created_date": str(datetime.datetime.now()),
+            "last_log_date": str(datetime.datetime.now())
+        }
+
+        # Vérification email
+        records = init_Table.all()
+        for data in records:
+            if data.get("fields", {}).get("mail") == constitute_dict["mail"]:
+                return jsonify({"status": False, "message": "Email déjà utilisé"}), 409
+
+        # Création utilisateur
         init_Table.create(constitute_dict)
         print("USER CREATED")
-    except Exception as e:
-        print("DB ERROR:", e)
-        return jsonify({'status': False, 'error': str(e)})
 
-    # 🔔 Notification NON BLOQUANTE
-    message = f"""
+        # Notification (non bloquante)
+        message = f"""
 Bonjour,
 
-Un nouvel utilisateur vient de s’inscrire sur la plateforme Flowstate.
+Nouvelle inscription sur Flowstate.
 
-Nom complet : {get_data['full_name']}
+Nom : {get_data['full_name']}
 Email : {get_data['email']}
-Rôle initial : {get_data['initial_titre']}
+Rôle : {get_data['initial_titre']}
 
 Date : {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
 
-— Flowstate Platform
+— Flowstate
 """
 
-    for collaborator in collaborator_email_list:
-        try:
-            send_mail(
-                "flowstate.os.sup@gmail.com",
-                collaborator,
-                message,
-                "[Flowstate] Nouvelle inscription utilisateur"
-            )
-        except Exception as e:
-            print("MAIL ERROR (ignored):", e)
+        for collaborator in collaborator_email_list:
+            try:
+                send_mail(
+                    "flowstate.os.sup@gmail.com",
+                    collaborator,
+                    message,
+                    "[Flowstate] Nouvelle inscription utilisateur"
+                )
+            except Exception as mail_error:
+                print("MAIL ERROR (ignored):", mail_error)
 
-    # ✅ réponse toujours envoyée
-    return jsonify({'status': True})
+        # 🔥 RÉPONSE GARANTIE
+        return jsonify({"status": True}), 201
+
+    except Exception as e:
+        print("FATAL ERROR:", e)
+        return jsonify({"status": False, "error": "Internal server error"}), 500
