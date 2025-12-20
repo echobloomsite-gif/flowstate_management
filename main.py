@@ -5,7 +5,8 @@ from flask_cors import CORS
 from pyairtable import Table
 import uuid
 import hashlib
-from notification_mail import send_mail
+from email.message import EmailMessage
+import smtplib
 import datetime
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +18,22 @@ Table_data = os.getenv("AIRTABLE_TABLE_NAME")
 collaborator_email_list = ["echobloomsite@gmail.com","matheoestrela@gmail.com","lawrenceguerrier@gmail.com","jerome.damien.dj@gmail.com"]
 init_Table = Table(Api_key,Base_Id,Table_data)
 read_table = init_Table.all()
+
+def send_mail(From,to,content,Subject):
+    message = EmailMessage()
+    message['From'] = From
+    message['To'] = to
+    message['Subject'] = Subject
+    message.set_content(content)
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com",587) as server:
+            server.starttls()
+            server.login(From,"jfir swho dezc ofad")
+            server.send_message(message)
+            print("Email_Envoyé avec succès ")
+    except Exception as e:
+        print("Une Erreur s'est produite lors du process de notification \nDetails:",e)
 @app.route("/get_auth",methods=['POST'])
 def get_date():
     get_data = request.get_json()
