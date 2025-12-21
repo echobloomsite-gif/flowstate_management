@@ -24,7 +24,7 @@ def handelign():
             for data in records:
                 if get_mail in data['fields']['mail']:
                     get_records_id = data['id']
-                    init_Table.update(get_records_id,{"subscription":"Done"})
+                    init_Table.update(get_records_id,{"subscription":"Disabled"})
                     return jsonify({"status": True}),200
         except Exception as e:
             print("Une erreur s'est produite lors du processus",e)
@@ -40,3 +40,4 @@ def handelign():
         except Exception as e:
             print("Une erreur s'est produite lors du processus", e)
             return jsonify({"status": True}), 500
+
