@@ -31,7 +31,8 @@ def get_date():
         "initial_team_size":get_data['initial_team_size'],
         "initial_client_count":get_data['initial_client_count'],
         "created_date":str(datetime.datetime.now()),
-        "last_log_date": str(datetime.datetime.now())
+        "last_log_date": str(datetime.datetime.now()),
+        "subscription":"Disabled",
     }
     print(constitute_dict)
     #SAVING PART LOGICAL
@@ -50,3 +51,4 @@ def get_date():
     except Exception as e:
         print("Error:", e)
         return jsonify({'status': False, 'error': str(e)})
+
